@@ -57,8 +57,13 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/haircut.png
-    - assets/facial.png
+    - assets/categories/haircut.png
+    - assets/categories/beautician.png
+    - assets/categories/plumber.png
+    - assets/categories/mason.png
+    - assets/featured/haircut.png
+    - assets/featured/facial.png
+    #- assets/placeholders/broken_image.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

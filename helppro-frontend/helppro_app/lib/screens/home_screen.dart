@@ -4,20 +4,43 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
-  final List<Map<String, dynamic>> categories = const [
-    { 'label': 'Hairdressers', 'icon': Icons.content_cut, 'color': Color(0xFFE0BBE4) },
-    { 'label': 'Beauticians', 'icon': Icons.brush,    'color': Color(0xFFB2EBF2) },
-    { 'label': 'Plumbers',    'icon': Icons.plumbing, 'color': Color(0xFFC8E6C9) },
-    { 'label': 'Masons',      'icon': Icons.build,    'color': Color(0xFFFFF9C4) },
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final List<CategoryItem> categories = const [
+    CategoryItem(label: 'Haircut', asset: 'assets/categories/haircut.png'),
+    CategoryItem(
+      label: 'Beautician',
+      asset: 'assets/categories/beautician.png',
+    ),
+    CategoryItem(label: 'Plumber', asset: 'assets/categories/plumber.png'),
+    CategoryItem(label: 'Mason', asset: 'assets/categories/mason.png'),
   ];
 
-  final List<Map<String, dynamic>> featured = const [
-    { 'title': 'Haircut', 'subtitle': 'From \$50', 'price': '\$40', 'image': 'assets/haircut.png' },
-    { 'title': 'Facial',  'subtitle': 'From \$20', 'price': '\$80', 'image': 'assets/facial.png' },
+  final List<ServiceItem> featured = const [
+    ServiceItem(
+      title: 'Haircut',
+      price: '\$25',
+      imageAsset: 'assets/featured/haircut.png',
+    ),
+    ServiceItem(
+      title: 'Facial',
+      price: '\$40',
+      imageAsset: 'assets/featured/facial.png',
+    ),
   ];
+
+  final List<PromotionItem> promotions = const [
+    PromotionItem(label: '20% OFF', color: Color(0xFFE94E1B)),
+    PromotionItem(label: '\$10 OFF', color: Color(0xFFF7941D)),
+  ];
+
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +50,8 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('HelpNow'),
         elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black87,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -36,115 +61,97 @@ class HomeScreen extends StatelessWidget {
       ),
       backgroundColor: const Color(0xFFF7F4EF),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          children: [
-
-            // Search bar
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Search for services',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ListView(
+            children: [
+              // Search Bar
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search',
+                    border: InputBorder.none,
+                    icon: Icon(Icons.search),
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 20),
-
-            // Categories (height adjusted)
-            SizedBox(
-              height: 100,  // Increased from 80 to give room
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: categories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, i) {
-                  final c = categories[i];
-                  return CategoryCard(
-                    label: c['label'],
-                    icon: c['icon'],
-                    color: c['color'],
-                  );
-                },
+              // Categories with larger height
+              SizedBox(
+                height: 120, // increased to fit image+label
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: categories.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) {
+                    return CategoryCard(item: categories[i]);
+                  },
+                ),
               ),
-            ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Featured title
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text('Featured', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Icon(Icons.arrow_forward),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // Featured list (height adjusted)
-            SizedBox(
-              height: 220,  // Increased from 200
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: featured.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 16),
-                itemBuilder: (context, i) {
-                  final s = featured[i];
-                  return ServiceCard(
-                    title: s['title'],
-                    subtitle: s['subtitle'],
-                    price: s['price'],
-                    imageAsset: s['image'],
-                  );
-                },
+              // Featured Section
+              const Text(
+                'Featured',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 180,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: featured.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                  itemBuilder: (context, i) {
+                    return ServiceCard(item: featured[i]);
+                  },
+                ),
+              ),
 
-          ],
+              const SizedBox(height: 24),
+
+              // Promotions Section
+              const Text(
+                'Promotions of the week',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 80,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: promotions.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                  itemBuilder: (context, i) {
+                    return PromotionCard(item: promotions[i]);
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
-    );
-  }
-}
-
-// === CategoryCard ===
-class CategoryCard extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-
-  const CategoryCard({
-    Key? key,
-    required this.label,
-    required this.icon,
-    required this.color,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 80,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 28, color: color.darken()),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12),
-            textAlign: TextAlign.center,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (idx) => setState(() => _currentIndex = idx),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_border),
+            label: 'Favorites',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
           ),
         ],
       ),
@@ -152,25 +159,69 @@ class CategoryCard extends StatelessWidget {
   }
 }
 
-// === ServiceCard ===
-class ServiceCard extends StatelessWidget {
+// Models
+class CategoryItem {
+  final String label;
+  final String asset;
+  const CategoryItem({required this.label, required this.asset});
+}
+
+class ServiceItem {
   final String title;
-  final String subtitle;
   final String price;
   final String imageAsset;
-
-  const ServiceCard({
-    Key? key,
+  const ServiceItem({
     required this.title,
-    required this.subtitle,
     required this.price,
     required this.imageAsset,
-  }) : super(key: key);
+  });
+}
+
+class PromotionItem {
+  final String label;
+  final Color color;
+  const PromotionItem({required this.label, required this.color});
+}
+
+// Widgets
+class CategoryCard extends StatelessWidget {
+  final CategoryItem item;
+  const CategoryCard({Key? key, required this.item}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.asset(
+            item.asset,
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          item.label,
+          style: const TextStyle(fontSize: 14),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+class ServiceCard extends StatelessWidget {
+  final ServiceItem item;
+  const ServiceCard({Key? key, required this.item}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 160,
+      width: 200,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -181,49 +232,59 @@ class ServiceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          // Image at top
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Image.asset(
-              imageAsset,
+              item.imageAsset,
               height: 100,
               width: double.infinity,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                height: 100,
-                color: Colors.grey.shade200,
-                child: const Icon(Icons.broken_image, size: 40, color: Colors.grey),
-              ),
             ),
           ),
-
-          // Title, price, subtitle
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(price, style: const TextStyle(fontSize: 14)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(item.price, style: const TextStyle(fontSize: 14)),
               ],
             ),
           ),
-
         ],
       ),
     );
   }
 }
 
-// === Color extension ===
-extension ColorUtils on Color {
-  Color darken([double amount = .2]) {
-    final hsl = HSLColor.fromColor(this);
-    final darker = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
-    return darker.toColor();
+class PromotionCard extends StatelessWidget {
+  final PromotionItem item;
+  const PromotionCard({Key? key, required this.item}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 160,
+      decoration: BoxDecoration(
+        color: item.color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        item.label,
+        style: const TextStyle(
+          fontSize: 20,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 }
