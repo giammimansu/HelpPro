@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.helppro_app"
-    compileSdk = 34
+    compileSdk = 35
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -22,7 +22,7 @@ android {
     defaultConfig {
         applicationId = "com.example.helppro_app"
         minSdk = 21
-        targetSdk = 34
+        targetSdk = 35          // ← e anche qui
         versionCode = 1
         versionName = "1.0"
     }

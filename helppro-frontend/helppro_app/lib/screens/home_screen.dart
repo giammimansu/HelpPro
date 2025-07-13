@@ -2,45 +2,23 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
-
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<CategoryItem> categories = const [
-    CategoryItem(label: 'Haircut', asset: 'assets/categories/haircut.png'),
-    CategoryItem(
-      label: 'Beautician',
-      asset: 'assets/categories/beautician.png',
-    ),
-    CategoryItem(label: 'Plumber', asset: 'assets/categories/plumber.png'),
-    CategoryItem(label: 'Mason', asset: 'assets/categories/mason.png'),
-  ];
-
-  final List<ServiceItem> featured = const [
-    ServiceItem(
-      title: 'Haircut',
-      price: '\$25',
-      imageAsset: 'assets/featured/haircut.png',
-    ),
-    ServiceItem(
-      title: 'Facial',
-      price: '\$40',
-      imageAsset: 'assets/featured/facial.png',
-    ),
-  ];
-
-  final List<PromotionItem> promotions = const [
-    PromotionItem(label: '20% OFF', color: Color(0xFFE94E1B)),
-    PromotionItem(label: '\$10 OFF', color: Color(0xFFF7941D)),
-  ];
-
   int _currentIndex = 0;
+
+  static final List<Widget> _pages = [
+    const _HomeTab(),
+    const MapScreen(),
+    const CartScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -60,100 +38,128 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       backgroundColor: const Color(0xFFF7F4EF),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ListView(
-            children: [
-              // Search Bar
-              Container(
-                margin: const EdgeInsets.only(top: 8, bottom: 24),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search',
-                    border: InputBorder.none,
-                    icon: Icon(Icons.search),
-                  ),
-                ),
-              ),
-
-              // Categories with larger height
-              SizedBox(
-                height: 120, // increased to fit image+label
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: categories.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, i) {
-                    return CategoryCard(item: categories[i]);
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Featured Section
-              const Text(
-                'Featured',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 180,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: featured.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 16),
-                  itemBuilder: (context, i) {
-                    return ServiceCard(item: featured[i]);
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Promotions Section
-              const Text(
-                'Promotions of the week',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 80,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: promotions.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 16),
-                  itemBuilder: (context, i) {
-                    return PromotionCard(item: promotions[i]);
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (idx) => setState(() => _currentIndex = idx),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
-            label: 'Favorites',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
+            icon: Icon(Icons.shopping_cart),
+            label: 'Cart',
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HomeTab extends StatelessWidget {
+  const _HomeTab({Key? key}) : super(key: key);
+
+  static const List<CategoryItem> categories = [
+    CategoryItem(label: 'Haircut', asset: 'assets/categories/haircut.png'),
+    CategoryItem(
+      label: 'Beautician',
+      asset: 'assets/categories/beautician.png',
+    ),
+    CategoryItem(label: 'Plumber', asset: 'assets/categories/plumber.png'),
+    CategoryItem(label: 'Mason', asset: 'assets/categories/mason.png'),
+  ];
+
+  static const List<ServiceItem> featured = [
+    ServiceItem(
+      title: 'Haircut',
+      price: '\$25',
+      imageAsset: 'assets/featured/haircut.png',
+    ),
+    ServiceItem(
+      title: 'Facial',
+      price: '\$40',
+      imageAsset: 'assets/featured/facial.png',
+    ),
+  ];
+
+  static const List<PromotionItem> promotions = [
+    PromotionItem(label: '20% OFF', color: Color(0xFFE94E1B)),
+    PromotionItem(label: '\$10 OFF', color: Color(0xFFF7941D)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: ListView(
+          children: [
+            // Search Bar
+            Container(
+              margin: const EdgeInsets.only(top: 8, bottom: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: const TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search',
+                  border: InputBorder.none,
+                  icon: Icon(Icons.search),
+                ),
+              ),
+            ),
+
+            // Categories
+            SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: categories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, i) => CategoryCard(item: categories[i]),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Featured
+            const Text(
+              'Featured',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: featured.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 16),
+                itemBuilder: (context, i) => ServiceCard(item: featured[i]),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Promotions
+            const Text(
+              'Promotions of the week',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 80,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: promotions.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 16),
+                itemBuilder: (context, i) => PromotionCard(item: promotions[i]),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
@@ -284,6 +290,39 @@ class PromotionCard extends StatelessWidget {
           color: Colors.white,
           fontWeight: FontWeight.bold,
         ),
+      ),
+    );
+  }
+}
+
+// Map and Cart Screens
+class MapScreen extends StatelessWidget {
+  const MapScreen({Key? key}) : super(key: key);
+
+  static const _initialCamera = CameraPosition(
+    target: LatLng(45.4642, 9.19), // Milano di default
+    zoom: 12,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return const GoogleMap(
+      initialCameraPosition: _initialCamera,
+      myLocationEnabled: true,
+      myLocationButtonEnabled: true,
+    );
+  }
+}
+
+class CartScreen extends StatelessWidget {
+  const CartScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        'Il tuo carrello è vuoto',
+        style: Theme.of(context).textTheme.titleLarge, // <— usiamo titleLarge
       ),
     );
   }
