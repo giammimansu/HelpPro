@@ -1,8 +1,7 @@
 # docker-compose.yml (solo snippet)
-version: '3.8'
 services:
   db:
-    image: postgres:15
+    image: postgis/postgis:15-3.3
     restart: always
     environment:
       POSTGRES_USER: helppro

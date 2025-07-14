@@ -3,6 +3,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 import enum
+from geoalchemy2 import Geometry
 from app.database import Base
 
 # — Ruoli utenti (clients) —
@@ -56,5 +57,5 @@ class Vendor(Base):
     city        = Column(String, nullable=False)
     postcode    = Column(String, nullable=False)
     address     = Column(String, nullable=False)
-
     account = relationship("VendorAccount", back_populates="vendor_profile")
+    location    = Column(Geometry("POINT", srid=4326), nullable=False, index=True)

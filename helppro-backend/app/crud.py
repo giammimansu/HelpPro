@@ -1,8 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app import models, schemas
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
 from passlib.context import CryptContext
+import sqlalchemy as sa
+from app.utils.geocode import geocode_address
 
+ 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -49,6 +54,17 @@ async def create_vendor_account(db: AsyncSession, account: schemas.VendorAccount
 
 # ——— CRUD Vendor Profile ——————————————————————————
 async def create_vendor_profile(db: AsyncSession, vendor: schemas.VendorCreate, account_id: int):
+    # 1) geocoding dell'indirizzo (assumi che geocode_address ritorni lat, lon)
+    lat, lon = await geocode_address(
+        country=vendor.country,
+        city=vendor.city,
+        postcode=vendor.postcode,
+        address=vendor.address
+    )
+    # 2) costruisci il POINT PostGIS
+    point = from_shape(Point(lon, lat), srid=4326)
+
+    # 3) crea il record vendor con location
     db_vendor = models.Vendor(
         account_id=account_id,
         company_name=vendor.company_name,
@@ -56,13 +72,35 @@ async def create_vendor_profile(db: AsyncSession, vendor: schemas.VendorCreate, 
         country=vendor.country,
         city=vendor.city,
         postcode=vendor.postcode,
-        address=vendor.address
+        address=vendor.address,
+        location=point
     )
     db.add(db_vendor)
     await db.commit()
     await db.refresh(db_vendor)
     return db_vendor
 
+
 async def get_vendor_profile_by_account_id(db: AsyncSession, account_id: int):
     result = await db.execute(select(models.Vendor).filter(models.Vendor.account_id == account_id))
     return result.scalars().first()
+
+
+
+
+
+async def search_vendors(
+    db: AsyncSession,
+    city: str | None = None,
+    postcode: str | None = None,
+    address: str | None = None
+) -> list[models.Vendor]:
+    stmt = select(models.Vendor)
+    if city:
+        stmt = stmt.filter(models.Vendor.city.ilike(f"%{city}%"))
+    if postcode:
+        stmt = stmt.filter(models.Vendor.postcode.ilike(f"%{postcode}%"))
+    if address:
+        stmt = stmt.filter(models.Vendor.address.ilike(f"%{address}%"))
+    result = await db.execute(stmt)
+    return result.scalars().all()

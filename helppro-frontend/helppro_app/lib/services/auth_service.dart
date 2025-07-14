@@ -8,10 +8,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class AuthService extends ChangeNotifier {
   // scegli host in base alla piattaforma
   static final String _baseUrl = kIsWeb
-    ? 'http://localhost:8000'
-    : Platform.isAndroid
+      ? 'http://localhost:8000'
+      : Platform.isAndroid
       ? 'http://10.0.2.2:8000'
       : 'http://localhost:8000';
+
+  // getter pubblico
+  static String get baseUrl => _baseUrl;
 
   final _storage = const FlutterSecureStorage();
   String? _token;
@@ -40,7 +43,12 @@ class AuthService extends ChangeNotifier {
     return false;
   }
 
-  Future<bool> signup(String email, String password, String fullName, String role) async {
+  Future<bool> signup(
+    String email,
+    String password,
+    String fullName,
+    String role,
+  ) async {
     final url = Uri.parse('$_baseUrl/auth/signup');
     final body = jsonEncode({
       'email': email,

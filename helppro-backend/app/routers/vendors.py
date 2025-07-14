@@ -1,6 +1,7 @@
 # app/routers/vendors.py
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import csv
@@ -65,3 +66,19 @@ async def bulk_upload_vendors(
         )
 
     return created
+
+
+
+@router.get(
+    "/search",
+    response_model=List[schemas.VendorOut],
+    status_code=status.HTTP_200_OK
+)
+async def search_vendors(
+    city: str | None    = Query(None, description="Filtra per città"),
+    postcode: str | None= Query(None, description="Filtra per CAP"),
+    address: str | None = Query(None, description="Filtra per indirizzo/via"),
+    db: AsyncSession = Depends(get_db)
+):
+    vendors = await crud.search_vendors(db, city, postcode, address)
+    return vendors
