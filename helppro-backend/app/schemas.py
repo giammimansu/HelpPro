@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Literal, Tuple
 from typing import Optional
 import enum
 
@@ -31,9 +32,18 @@ class VendorBase(BaseModel):
 class VendorCreate(VendorBase):
     pass
 
-class VendorOut(VendorBase):
+
+class VendorOut(BaseModel):
     id: int
     account_id: int
+    company_name: str
+    category: str
+    country: str
+    city: str
+    postcode: str
+    address: str
+    latitude: float
+    longitude: float
 
     class Config:
         orm_mode = True

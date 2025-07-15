@@ -1,72 +1,76 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
 class AuthService extends ChangeNotifier {
-  // scegli host in base alla piattaforma
-  static final String _baseUrl = kIsWeb
-      ? 'http://localhost:8000'
-      : Platform.isAndroid
-      ? 'http://10.0.2.2:8000'
-      : 'http://localhost:8000';
+  static const _apiBase = 'api.yourdomain.com';
+  static final FlutterSecureStorage _storage = FlutterSecureStorage();
 
-  // getter pubblico
-  static String get baseUrl => _baseUrl;
-
-  final _storage = const FlutterSecureStorage();
   String? _token;
-  bool get isLoggedIn => _token != null;
+  bool _isLoggedIn = false;
+  static const _tokenKey = 'access_token';
+
+  bool get isLoggedIn => _isLoggedIn;
   String? get token => _token;
 
   Future<void> loadToken() async {
-    _token = await _storage.read(key: 'access_token');
+    final stored = await _storage.read(key: _tokenKey);
+    if (stored != null) {
+      _token = stored;
+      _isLoggedIn = true;
+    }
     notifyListeners();
   }
 
   Future<bool> login(String email, String password) async {
-    final url = Uri.parse('$_baseUrl/auth/token');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: {'username': email, 'password': password},
+    final uri = Uri.https(_apiBase, '/auth/login');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
     );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
       _token = data['access_token'];
-      await _storage.write(key: 'access_token', value: _token);
+      await _storage.write(key: _tokenKey, value: _token);
+      _isLoggedIn = true;
       notifyListeners();
       return true;
     }
     return false;
   }
 
-  Future<bool> signup(
-    String email,
-    String password,
-    String fullName,
-    String role,
-  ) async {
-    final url = Uri.parse('$_baseUrl/auth/signup');
-    final body = jsonEncode({
-      'email': email,
-      'password': password,
-      'full_name': fullName,
-      'role': role,
-    });
-    final response = await http.post(
-      url,
+  Future<bool> signup(String email, String password, String fullName) async {
+    final uri = Uri.https(_apiBase, '/auth/signup');
+    final res = await http.post(
+      uri,
       headers: {'Content-Type': 'application/json'},
-      body: body,
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'full_name': fullName,
+      }),
     );
-    return response.statusCode == 201;
+    if (res.statusCode == 201) {
+      return await login(email, password);
+    }
+    return false;
   }
 
   Future<void> logout() async {
     _token = null;
-    await _storage.delete(key: 'access_token');
+    _isLoggedIn = false;
+    await _storage.delete(key: _tokenKey);
     notifyListeners();
+  }
+
+  /// diventa static!
+  static Future<Map<String, String>> getAuthHeaders() async {
+    final token = await _storage.read(key: _tokenKey);
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
   }
 }

@@ -1,25 +1,26 @@
-// lib/models/vendor.dart
 class Vendor {
   final int id;
-  final String companyName, category, country, city, postcode, address;
+  final String companyName;
+  final String address;
+  final double latitude;
+  final double longitude;
+  // ... altri campi ...
 
   Vendor({
     required this.id,
     required this.companyName,
-    required this.category,
-    required this.country,
-    required this.city,
-    required this.postcode,
     required this.address,
+    required this.latitude,
+    required this.longitude,
   });
 
-  factory Vendor.fromJson(Map<String, dynamic> json) => Vendor(
-    id: json['id'],
-    companyName: json['company_name'],
-    category: json['category'],
-    country: json['country'],
-    city: json['city'],
-    postcode: json['postcode'],
-    address: json['address'],
-  );
+  factory Vendor.fromJson(Map<String, dynamic> json) {
+    return Vendor(
+      id: json['id'] as int,
+      companyName: json['company_name'] as String,
+      address: json['address'] as String,
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+    );
+  }
 }

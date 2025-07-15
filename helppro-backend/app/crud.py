@@ -1,11 +1,17 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app import models, schemas
+from sqlalchemy.orm import Session
+from geoalchemy2.functions import ST_DWithin
+import sqlalchemy as sa
+from sqlalchemy import func
 from geoalchemy2.shape import from_shape
+from geoalchemy2.types import Geography
 from shapely.geometry import Point
 from passlib.context import CryptContext
-import sqlalchemy as sa
+from app import models, schemas
 from app.utils.geocode import geocode_address
+from app.models import Vendor
+
 
  
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -102,5 +108,40 @@ async def search_vendors(
         stmt = stmt.filter(models.Vendor.postcode.ilike(f"%{postcode}%"))
     if address:
         stmt = stmt.filter(models.Vendor.address.ilike(f"%{address}%"))
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+async def get_vendors_in_radius(
+    db: AsyncSession,
+    lat: float,
+    lon: float,
+    radius_km: float,
+) -> list[Vendor]:
+    # converto raggio in metri
+    radius_m = radius_km * 1000
+
+    # punto di ricerca in geometry
+    point_geom = func.ST_SetSRID(
+        func.ST_MakePoint(lon, lat),
+        4326
+    )
+
+    # lo casto in Geography
+    point_geog = point_geom.cast(Geography)
+
+    stmt = (
+        select(Vendor)
+        # scarto quelli senza posizione
+        .where(Vendor.location != None)
+        # castto la colonna geometry in Geography e filtro per distanza
+        .where(
+            func.ST_DWithin(
+                Vendor.location.cast(Geography),
+                point_geog,
+                radius_m
+            )
+        )
+    )
+
     result = await db.execute(stmt)
     return result.scalars().all()

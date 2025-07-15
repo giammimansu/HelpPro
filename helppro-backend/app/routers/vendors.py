@@ -3,13 +3,15 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from fastapi import Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from sqlalchemy.orm import Session
+from typing import List, Tuple
 import csv
 from io import StringIO
 
 from app import crud, schemas
 from app.database import get_db
 from app.models import VendorAccount
+from geoalchemy2.shape import to_shape
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
@@ -72,13 +74,32 @@ async def bulk_upload_vendors(
 @router.get(
     "/search",
     response_model=List[schemas.VendorOut],
-    status_code=status.HTTP_200_OK
+    summary="Cerca professionisti nel raggio specificato",
 )
 async def search_vendors(
-    city: str | None    = Query(None, description="Filtra per città"),
-    postcode: str | None= Query(None, description="Filtra per CAP"),
-    address: str | None = Query(None, description="Filtra per indirizzo/via"),
-    db: AsyncSession = Depends(get_db)
+    lat: float = Query(..., description="Latitudine"),
+    lon: float = Query(..., description="Longitudine"),
+    radius_km: float = Query(5.0, gt=0.0, description="Raggio di ricerca in km"),
+    db: AsyncSession = Depends(get_db),
 ):
-    vendors = await crud.search_vendors(db, city, postcode, address)
-    return vendors
+    vendors = await crud.get_vendors_in_radius(db, lat, lon, radius_km)
+    out: List[schemas.VendorOut] = []
+    for v in vendors:
+        if v.location is None:
+            continue
+        # to_shape converte il GeometryElement in uno shape shapely, 
+        # ma puoi pure usare v.location.x / .y se funziona
+        geom = to_shape(v.location)
+        out.append(schemas.VendorOut(
+            id=v.id,
+            account_id=v.account_id,
+            company_name=v.company_name,
+            category=v.category,
+            country=v.country,
+            city=v.city,
+            postcode=v.postcode,
+            address=v.address,
+            latitude=geom.y,    # latitudine
+            longitude=geom.x,   # longitudine
+        ))
+    return out

@@ -1,37 +1,28 @@
-// lib/services/vendor_service.dart
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/vendor.dart';
-import 'auth_service.dart'; // importa AuthService
 
 class VendorService {
-  // ora accessibile
-  static final _baseUrl = AuthService.baseUrl;
-  final _storage = const FlutterSecureStorage();
+  final String _baseUrl = 'http://10.0.2.2:8000';
 
-  Future<List<Vendor>> searchVendors({
-    String? city,
-    String? postcode,
-    String? address,
+  Future<List<Vendor>> fetchVendors({
+    required double lat,
+    required double lon,
+    required double radiusKm,
   }) async {
-    final token = await _storage.read(key: 'access_token');
-    final uri = Uri.parse('$_baseUrl/vendors/search').replace(
-      queryParameters: {
-        if (city != null && city.isNotEmpty) 'city': city,
-        if (postcode != null && postcode.isNotEmpty) 'postcode': postcode,
-        if (address != null && address.isNotEmpty) 'address': address,
-      },
+    final uri = Uri.parse(
+      '$_baseUrl/vendors/search?lat=$lat&lon=$lon&radius_km=$radiusKm',
     );
-    final resp = await http.get(
-      uri,
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (resp.statusCode != 200) {
-      throw Exception('Errore fetching vendors: ${resp.statusCode}');
+    final resp = await http.get(uri);
+    if (resp.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(resp.body);
+      return data
+          .map((item) => Vendor.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } else {
+      throw Exception(
+        'Failed to load vendors (${resp.statusCode}): ${resp.body}',
+      );
     }
-    final list = jsonDecode(resp.body) as List;
-    return list.map((j) => Vendor.fromJson(j)).toList();
   }
 }
