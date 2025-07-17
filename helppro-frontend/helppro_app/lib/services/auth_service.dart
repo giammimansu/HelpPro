@@ -1,76 +1,112 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:helppro_app/models/vendor.dart';
 
 class AuthService extends ChangeNotifier {
-  static const _apiBase = 'api.yourdomain.com';
-  static final FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const String _baseUrl =
+      'http://10.0.2.2:8000'; // Indirizzo del backend (emulatore Android)
 
   String? _token;
-  bool _isLoggedIn = false;
-  static const _tokenKey = 'access_token';
-
-  bool get isLoggedIn => _isLoggedIn;
   String? get token => _token;
 
+  /// Carica il token salvato in precedenza
   Future<void> loadToken() async {
-    final stored = await _storage.read(key: _tokenKey);
-    if (stored != null) {
-      _token = stored;
-      _isLoggedIn = true;
-    }
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('authToken');
     notifyListeners();
   }
 
-  Future<bool> login(String email, String password) async {
-    final uri = Uri.https(_apiBase, '/auth/login');
-    final res = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      _token = data['access_token'];
-      await _storage.write(key: _tokenKey, value: _token);
-      _isLoggedIn = true;
-      notifyListeners();
-      return true;
+  /// Ritorna il token corrente o lo recupera dalla memoria
+  Future<String> getToken() async {
+    if (_token != null) return _token!;
+    final prefs = await SharedPreferences.getInstance();
+    final t = prefs.getString('authToken');
+    if (t == null) {
+      throw Exception('Token non trovato. Effettua il login.');
     }
-    return false;
+    _token = t;
+    return _token!;
   }
 
-  Future<bool> signup(String email, String password, String fullName) async {
-    final uri = Uri.https(_apiBase, '/auth/signup');
-    final res = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-        'full_name': fullName,
-      }),
-    );
-    if (res.statusCode == 201) {
-      return await login(email, password);
-    }
-    return false;
+  /// Salva il token e notifica i listener
+  Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('authToken', token);
+    _token = token;
+    notifyListeners();
   }
 
+  /// Effettua la richiesta di login a /auth/token utilizzando form data
+  Future<void> login({required String email, required String password}) async {
+    final uri = Uri.parse('$_baseUrl/auth/token');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: {'username': email, 'password': password},
+    );
+    print('LOGIN ${response.statusCode}: ${response.body}');
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final accessToken = data['access_token'] as String;
+      await saveToken(accessToken);
+    } else {
+      throw Exception('Login fallito (${response.statusCode})');
+    }
+  }
+
+  /// Effettua la registrazione a /auth/signup e poi esegue il login
+  Future<void> signup({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/auth/signup');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'name': name, 'email': email, 'password': password}),
+    );
+    print('SIGNUP ${response.statusCode}: ${response.body}');
+    if (response.statusCode == 201) {
+      // Signup avvenuto: ora login per ottenere token
+      await login(email: email, password: password);
+    } else {
+      throw Exception('Signup fallito (${response.statusCode})');
+    }
+  }
+
+  /// Logout: rimuove il token
   Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('authToken');
     _token = null;
-    _isLoggedIn = false;
-    await _storage.delete(key: _tokenKey);
     notifyListeners();
   }
 
-  /// diventa static!
-  static Future<Map<String, String>> getAuthHeaders() async {
-    final token = await _storage.read(key: _tokenKey);
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
+  /// Recupera i vendor vicini usando il token per autorizzazione
+  Future<List<Vendor>> fetchNearbyProfessionals({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final t = await getToken();
+    final uri = Uri.parse(
+      '$_baseUrl/professionals?lat=$latitude&lng=$longitude',
+    );
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $t',
+      },
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
+      return data
+          .map((e) => Vendor.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    throw Exception('Errore fetching vendors (${response.statusCode})');
   }
 }

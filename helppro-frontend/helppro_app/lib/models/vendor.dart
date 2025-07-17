@@ -1,10 +1,10 @@
+// lib/models/vendor.dart
 class Vendor {
   final int id;
   final String companyName;
   final String address;
   final double latitude;
   final double longitude;
-  // ... altri campi ...
 
   Vendor({
     required this.id,
@@ -17,7 +17,7 @@ class Vendor {
   factory Vendor.fromJson(Map<String, dynamic> json) {
     return Vendor(
       id: json['id'] as int,
-      companyName: json['company_name'] as String,
+      companyName: json['companyName'] as String,
       address: json['address'] as String,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),

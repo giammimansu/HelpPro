@@ -1,99 +1,80 @@
+// lib/screens/signup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
-
   @override
   _SignupScreenState createState() => _SignupScreenState();
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final TextEditingController _emailCtrl = TextEditingController();
-  final TextEditingController _passCtrl = TextEditingController();
-  final TextEditingController _nameCtrl = TextEditingController();
-  bool _loading = false;
-  String? _error;
-
-  Future<void> _submit() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    final auth = context.read<AuthService>();
-    final success = await auth.signup(
-      _emailCtrl.text.trim(),
-      _passCtrl.text,
-      _nameCtrl.text.trim(),
-    );
-
-    setState(() {
-      _loading = false;
-    });
-
-    if (success) {
-      Navigator.of(context).pop(); // torna al login o home
-    } else {
-      setState(() {
-        _error = 'Registrazione fallita. Riprova.';
-      });
-    }
-  }
-
+  final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  bool _isLoading = false;
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _emailCtrl.dispose();
     _passCtrl.dispose();
-    _nameCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSignup() async {
+    setState(() => _isLoading = true);
+    try {
+      final auth = Provider.of<AuthService>(context, listen: false);
+      await auth.signup(
+        name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text,
+      );
+      Navigator.pushReplacementNamed(context, '/home');
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Signup fallito: $e')));
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrati')),
+      appBar: AppBar(title: const Text('Registrazione')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             TextField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Nome completo'),
+              decoration: const InputDecoration(labelText: 'Nome'),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             TextField(
               controller: _emailCtrl,
               decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             TextField(
               controller: _passCtrl,
-              decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
+              decoration: const InputDecoration(labelText: 'Password'),
             ),
-            const SizedBox(height: 24),
-            if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 12),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                child: _loading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text('Registra'),
-              ),
+            const SizedBox(height: 16),
+            _isLoading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: _handleSignup,
+                    child: const Text('Registrati'),
+                  ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, '/login'),
+              child: const Text('Hai già un account?'),
             ),
           ],
         ),
