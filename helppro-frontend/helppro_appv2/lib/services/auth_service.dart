@@ -33,4 +33,20 @@ class AuthService extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> signup(String email, String fullName, String password) async {
+    final url = Uri.parse('$_baseUrl/auth/signup');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body:
+          '{"email": "$email", "full_name": "$fullName", "password": "$password"}',
+    );
+
+    if (response.statusCode == 201) {
+      return true; // Registrazione riuscita
+    } else {
+      return false; // Errore nella registrazione
+    }
+  }
 }

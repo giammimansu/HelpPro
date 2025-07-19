@@ -63,10 +63,16 @@ flutter:
   assets:
     - .env
     - assets/logo.png
+    - assets/user_marker.png
+    - assets/vendor_position.png
     - assets/categories/haircut.png
     - assets/categories/beautician.png
     - assets/categories/plumber.png
     - assets/categories/mason.png
+    - assets/vendor_markers/beautician_marker.png
+    - assets/vendor_markers/haircut_marker.png
+    - assets/vendor_markers/mason_marker.png
+    - assets/vendor_markers/plumber_marker.png
     - assets/featured/haircut.png
     - assets/featured/facial.png
     - assets/map_style.json

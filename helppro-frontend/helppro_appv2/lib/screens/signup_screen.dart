@@ -1,41 +1,31 @@
-import '../screens/map_screen.dart';
-import '../screens/signup_screen.dart';
-import '../screens/dashboard_screen.dart';
-import '../services/auth_service.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart' as gl;
+import '../services/auth_service.dart';
+import 'dashboard_screen.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final AuthService _authService = AuthService();
+class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    _requestLocationPermission();
-  }
-
-  Future<void> _requestLocationPermission() async {
-    gl.LocationPermission permission = await gl.Geolocator.checkPermission();
-    if (permission == gl.LocationPermission.denied ||
-        permission == gl.LocationPermission.deniedForever) {
-      permission = await gl.Geolocator.requestPermission();
-    }
-    // Puoi gestire qui eventuali errori o permessi negati
-  }
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Registrazione'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -43,12 +33,26 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset('assets/logo.png', height: 120),
+                Image.asset('assets/logo.png', height: 100),
                 const SizedBox(height: 32),
                 Form(
                   key: _formKey,
                   child: Column(
                     children: [
+                      TextFormField(
+                        controller: _fullNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nome Completo',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Inserisci il tuo nome completo';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _emailController,
                         decoration: const InputDecoration(
@@ -78,6 +82,27 @@ class _HomePageState extends State<HomePage> {
                           if (value == null || value.isEmpty) {
                             return 'Inserisci la password';
                           }
+                          if (value.length < 6) {
+                            return 'La password deve essere di almeno 6 caratteri';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        decoration: const InputDecoration(
+                          labelText: 'Conferma Password',
+                          border: OutlineInputBorder(),
+                        ),
+                        obscureText: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Conferma la password';
+                          }
+                          if (value != _passwordController.text) {
+                            return 'Le password non coincidono';
+                          }
                           return null;
                         },
                       ),
@@ -88,14 +113,21 @@ class _HomePageState extends State<HomePage> {
                           onPressed: () async {
                             if (_formKey.currentState!.validate()) {
                               final email = _emailController.text.trim();
+                              final fullName = _fullNameController.text.trim();
                               final password = _passwordController.text;
-                              final success = await _authService.login(
+
+                              final success = await _authService.signup(
                                 email,
+                                fullName,
                                 password,
                               );
                               if (success) {
-                                // Naviga alla schermata della mappa
-                                if (mounted) {
+                                // Registrazione riuscita, effettua automaticamente il login
+                                final loginSuccess = await _authService.login(
+                                  email,
+                                  password,
+                                );
+                                if (loginSuccess && mounted) {
                                   Navigator.of(context).pushReplacement(
                                     MaterialPageRoute(
                                       builder: (_) => const DashboardScreen(),
@@ -105,25 +137,25 @@ class _HomePageState extends State<HomePage> {
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Credenziali non valide'),
+                                    content: Text(
+                                      'Errore nella registrazione. Email già in uso?',
+                                    ),
                                   ),
                                 );
                               }
                             }
                           },
-                          child: const Text('Login'),
+                          child: const Text('Registrati'),
                         ),
                       ),
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const SignupScreen(),
-                            ),
-                          );
+                          Navigator.of(
+                            context,
+                          ).pop(); // Torna alla pagina di login
                         },
-                        child: const Text('Non hai un account? Registrati'),
+                        child: const Text('Hai già un account? Accedi'),
                       ),
                     ],
                   ),
@@ -134,5 +166,14 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _fullNameController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 }
