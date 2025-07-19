@@ -1,0 +1,29 @@
+{
+  "version": 8,
+  "name": "Minimal Custom",
+  "sources": {
+    "openmaptiles": {
+      "type": "vector",
+      "url": "https://api.maptiler.com/tiles/v3.json?key=YOUR_MAPTILER_KEY"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#FDF9F3"
+      }
+    },
+    {
+      "id": "roads",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "paint": {
+        "line-color": "#ffb066",
+        "line-width": 1
+      }
+    }
+  ]
+}
