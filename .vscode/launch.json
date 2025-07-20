@@ -1,0 +1,48 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "helppro_appv2",
+            "cwd": "helppro-frontend\\helppro_appv2",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "emulator",
+            "args": [
+                "--no-sound-null-safety"
+            ],
+            "vmAdditionalArgs": [
+                "--disable-service-auth-codes"
+            ]
+        },
+        {
+            "name": "helppro_appv2 (profile mode)",
+            "cwd": "helppro-frontend\\helppro_appv2",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "deviceId": "emulator"
+        },
+        {
+            "name": "helppro_appv2 (release mode)",
+            "cwd": "helppro-frontend\\helppro_appv2",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "deviceId": "emulator"
+        },
+        {
+            "name": "helppro_appv2 (clean launch)",
+            "cwd": "helppro-frontend\\helppro_appv2",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "emulator",
+            "preLaunchTask": "flutter: Clean",
+            "args": [
+                "--hot"
+            ]
+        }
+    ]
+}

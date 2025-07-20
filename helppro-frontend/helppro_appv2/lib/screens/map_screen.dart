@@ -24,6 +24,12 @@ class _MapScreenState extends State<MapScreen>
   Set<String> _selectedCategories = {};
   Set<String> _availableCategories = {};
 
+  // Controlli zoom
+  double _currentZoom = 12.5;
+  static const double _minZoom = 8.0;
+  static const double _maxZoom = 18.0;
+  static const double _zoomStep = 1.0;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -308,19 +314,130 @@ class _MapScreenState extends State<MapScreen>
     // Puoi gestire qui eventuali errori o permessi negati
   }
 
+  Future<void> _testMapMovement() async {
+    if (mapboxMapController == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Controller mappa non disponibile'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Test 1: Vai a Roma
+      await mapboxMapController!.setCamera(
+        CameraOptions(
+          center: Point(
+            coordinates: Position(12.4964, 41.9028), // Roma
+          ),
+          zoom: 13.0,
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Test: Mappa spostata a Roma'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+
+      // Test 2: Dopo 2 secondi, vai a Milano
+      await Future.delayed(const Duration(seconds: 2));
+
+      await mapboxMapController!.setCamera(
+        CameraOptions(
+          center: Point(
+            coordinates: Position(9.1900, 45.4642), // Milano
+          ),
+          zoom: 13.0,
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Test: Mappa spostata a Milano'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Test 3: Torna alla posizione corrente dopo altri 2 secondi
+      await Future.delayed(const Duration(seconds: 2));
+      if (_currentPosition != null) {
+        await mapboxMapController!.setCamera(
+          CameraOptions(
+            center: Point(
+              coordinates: Position(
+                _currentPosition!.longitude,
+                _currentPosition!.latitude,
+              ),
+            ),
+            zoom: 12.5,
+          ),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Test completato: Tornato alla posizione corrente'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Errore nel test: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _recenterToCurrentLocation() async {
     try {
+      // Mostra un indicatore di caricamento
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Recupero posizione...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
       geo.Position position = await geo.Geolocator.getCurrentPosition(
         desiredAccuracy: geo.LocationAccuracy.high,
       );
       setState(() {
         _currentPosition = position;
       });
-      _moveCameraAndDrawCircle();
+
+      // Verifica se il controller è disponibile
+      if (mapboxMapController != null) {
+        await mapboxMapController!.setCamera(
+          CameraOptions(
+            center: Point(
+              coordinates: Position(position.longitude, position.latitude),
+            ),
+            zoom: 15.0, // Zoom più vicino per verificare il movimento
+          ),
+        );
+
+        // Ricarica i vendor nella nuova posizione
+        _loadVendors();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Posizione aggiornata!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        throw Exception('Controller mappa non disponibile');
+      }
     } catch (e) {
       // Gestisci errore di localizzazione
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossibile ottenere la posizione')),
+        SnackBar(content: Text('Errore: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -461,13 +578,184 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  // Metodi per gestire lo zoom
+  Future<void> _zoomIn() async {
+    if (mapboxMapController == null) return;
+
+    final newZoom = (_currentZoom + _zoomStep).clamp(_minZoom, _maxZoom);
+    if (newZoom == _currentZoom) {
+      // Zoom massimo raggiunto - feedback visivo
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🔍 Zoom massimo raggiunto'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      await mapboxMapController!.setCamera(CameraOptions(zoom: newZoom));
+      setState(() {
+        _currentZoom = newZoom;
+      });
+      print('🔍 Zoom In: ${_currentZoom.toStringAsFixed(1)}');
+    } catch (e) {
+      print('❌ Errore zoom in: $e');
+    }
+  }
+
+  Future<void> _zoomOut() async {
+    if (mapboxMapController == null) return;
+
+    final newZoom = (_currentZoom - _zoomStep).clamp(_minZoom, _maxZoom);
+    if (newZoom == _currentZoom) {
+      // Zoom minimo raggiunto - feedback visivo
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🔍 Zoom minimo raggiunto'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      await mapboxMapController!.setCamera(CameraOptions(zoom: newZoom));
+      setState(() {
+        _currentZoom = newZoom;
+      });
+      print('🔍 Zoom Out: ${_currentZoom.toStringAsFixed(1)}');
+    } catch (e) {
+      print('❌ Errore zoom out: $e');
+    }
+  }
+
+  Future<void> _updateCurrentZoom() async {
+    if (mapboxMapController == null) return;
+
+    try {
+      final cameraState = await mapboxMapController!.getCameraState();
+      setState(() {
+        _currentZoom = cameraState.zoom;
+      });
+    } catch (e) {
+      print('❌ Errore aggiornamento zoom: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required by AutomaticKeepAliveClientMixin
     return Scaffold(
       body: Stack(
         children: [
-          MapWidget(onMapCreated: _OnMapCreated),
+          // Wrap MapWidget in un GestureDetector per debug
+          GestureDetector(
+            onTap: () => print('🔥 Tap sulla mappa rilevato!'),
+            onPanUpdate: (details) =>
+                print('🔥 Pan sulla mappa: ${details.delta}'),
+            child: MapWidget(
+              onMapCreated: _OnMapCreated,
+              onCameraChangeListener: (CameraChangedEventData data) {
+                // Aggiorna il livello di zoom quando l'utente cambia la camera
+                if (mounted) {
+                  setState(() {
+                    _currentZoom = data.cameraState.zoom;
+                  });
+                }
+              },
+              cameraOptions: CameraOptions(
+                center: _currentPosition != null
+                    ? Point(
+                        coordinates: Position(
+                          _currentPosition!.longitude,
+                          _currentPosition!.latitude,
+                        ),
+                      )
+                    : Point(
+                        coordinates: Position(12.4964, 41.9028), // Roma default
+                      ),
+                zoom: 12.5,
+              ),
+              styleUri: MapboxStyles.MAPBOX_STREETS,
+            ),
+          ),
+          // Controlli Zoom +/-
+          Positioned(
+            top: 50,
+            left: 16,
+            child: Column(
+              children: [
+                // Pulsante Zoom In (+)
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        spreadRadius: 1,
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _zoomIn,
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.blue,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                // Separatore
+                Container(width: 50, height: 1, color: Colors.grey.shade300),
+                const SizedBox(height: 2),
+                // Pulsante Zoom Out (-)
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        spreadRadius: 1,
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _zoomOut,
+                      child: const Icon(
+                        Icons.remove,
+                        color: Colors.blue,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Pulsante filtro categorie
           Positioned(
             top: 50,
@@ -520,18 +808,92 @@ class _MapScreenState extends State<MapScreen>
               tooltip: 'Vai alla mia posizione',
             ),
           ),
+          // Pulsante di test movimento mappa (debug)
+          Positioned(
+            bottom: 150,
+            right: 16,
+            child: FloatingActionButton(
+              onPressed: _testMapMovement,
+              backgroundColor: Colors.orange,
+              child: const Icon(Icons.explore),
+              tooltip: 'Test movimento mappa',
+            ),
+          ),
         ],
       ),
     );
   }
 
-  void _OnMapCreated(MapboxMap controller) {
+  void _OnMapCreated(MapboxMap controller) async {
     setState(() {
       mapboxMapController = controller;
     });
-    mapboxMapController?.location.updateSettings(
-      LocationComponentSettings(enabled: true),
-    );
+
+    print('🗺️ Mappa creata, inizializzazione...');
+
+    // Inizializza il livello di zoom corrente
+    await _updateCurrentZoom();
+
+    // Configura le impostazioni di localizzazione
+    try {
+      await mapboxMapController?.location.updateSettings(
+        LocationComponentSettings(enabled: true),
+      );
+      print('✅ Location component abilitato');
+    } catch (e) {
+      print('❌ Errore location component: $e');
+    }
+
+    // Abilita esplicitamente le gesture di navigazione
+    await _enableMapGestures();
+
+    // Verifica lo stato delle gesture dopo l'abilitazione
+    await _checkGestureSettings();
+
+    // Sposta la camera alla posizione corrente se disponibile
     _moveCameraAndDrawCircle();
+  }
+
+  Future<void> _checkGestureSettings() async {
+    if (mapboxMapController != null) {
+      try {
+        final settings = await mapboxMapController!.gestures.getSettings();
+        print('🎯 Gesture Settings:');
+        print('   - Scroll: ${settings.scrollEnabled}');
+        print('   - Pinch to Zoom: ${settings.pinchToZoomEnabled}');
+        print('   - Rotate: ${settings.rotateEnabled}');
+        print('   - Pitch: ${settings.pitchEnabled}');
+        print('   - Double Tap: ${settings.doubleTapToZoomInEnabled}');
+
+        if (settings.scrollEnabled == false) {
+          print('⚠️ WARNING: Scroll non abilitato!');
+        }
+      } catch (e) {
+        print('❌ Errore controllo gesture: $e');
+      }
+    }
+  }
+
+  Future<void> _enableMapGestures() async {
+    if (mapboxMapController != null) {
+      try {
+        // Abilita tutte le gesture della mappa
+        await mapboxMapController!.gestures.updateSettings(
+          GesturesSettings(
+            scrollEnabled: true,
+            pinchToZoomEnabled: true,
+            rotateEnabled: true,
+            pitchEnabled: true,
+            doubleTapToZoomInEnabled: true,
+            doubleTouchToZoomOutEnabled: true,
+            quickZoomEnabled: true,
+          ),
+        );
+
+        print('Gesture della mappa abilitate');
+      } catch (e) {
+        print('Errore nell\'abilitazione delle gesture: $e');
+      }
+    }
   }
 }
